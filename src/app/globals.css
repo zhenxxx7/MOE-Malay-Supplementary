@@ -24,3 +24,115 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Page-turn/slide animations */
+@keyframes slide-in-next {
+  from {
+    transform: translateX(8%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes slide-in-prev {
+  from {
+    transform: translateX(-8%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes flip-hint-next {
+  from {
+    transform: rotateY(-10deg) translateX(20px);
+  }
+  to {
+    transform: rotateY(0deg) translateX(0);
+  }
+}
+@keyframes flip-hint-prev {
+  from {
+    transform: rotateY(10deg) translateX(-20px);
+  }
+  to {
+    transform: rotateY(0deg) translateX(0);
+  }
+}
+
+/* Apply animations depending on direction; desktop gets a subtle 3D hint */
+[data-anim="next"] .book-page {
+  animation: slide-in-next 420ms ease-out;
+}
+[data-anim="prev"] .book-page {
+  animation: slide-in-prev 420ms ease-out;
+}
+@media (min-width: 1024px) {
+  [data-anim="next"] .book-page {
+    animation: flip-hint-next 420ms ease-out;
+  }
+  [data-anim="prev"] .book-page {
+    animation: flip-hint-prev 420ms ease-out;
+  }
+}
+
+/* True page flip overlay (desktop) */
+@keyframes page-flip-next {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+@keyframes page-flip-prev {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(180deg);
+  }
+}
+.flip-page {
+  backface-visibility: hidden;
+}
+.flip-next {
+  animation: page-flip-next 620ms ease-in;
+}
+.flip-prev {
+  animation: page-flip-prev 620ms ease-in;
+}
+
+/* Cover to flipbook transition */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.cover-fade-out {
+  animation: fade-out 500ms ease-in-out;
+}
+
+.flipbook-fade-in {
+  animation: fade-in 500ms ease-in-out;
+}

@@ -47,14 +47,19 @@ export default function AudioSync({
 
   useEffect(() => {
     isReadyRef.current = isReady;
+    // Only auto-play when isReady changes from false to true, not when isPlaying changes
+    // This prevents restarting audio that's already playing
     if (isReady && autoPlay && isPlaying && audioRef.current) {
       const audio = audioRef.current;
-      if (audio.paused) {
+      // Only play if audio hasn't started yet (currentTime is 0 or very close to 0)
+      // This prevents restarting audio that's already in progress
+      if (audio.paused && audio.currentTime < 0.1) {
         setTimeout(() => {
           if (
             audioRef.current &&
             audioRef.current.paused &&
-            isPlayingRef.current
+            isPlayingRef.current &&
+            audioRef.current.currentTime < 0.1
           ) {
             void audioRef.current.play().catch((err) => {
               console.warn("Autoplay prevented on ready change:", err);
@@ -95,13 +100,21 @@ export default function AudioSync({
       setIsReady(true);
       onReady?.();
       // Try to play immediately when ready if autoPlay is enabled
-      if (autoPlay && isPlayingRef.current && audio.paused) {
+      // Only play if audio hasn't started yet (currentTime is 0 or very close to 0)
+      // This prevents restarting audio that's already in progress
+      if (
+        autoPlay &&
+        isPlayingRef.current &&
+        audio.paused &&
+        audio.currentTime < 0.1
+      ) {
         // Use a small delay to ensure audio is fully ready
         setTimeout(() => {
           if (
             audioRef.current &&
             audioRef.current.paused &&
-            isPlayingRef.current
+            isPlayingRef.current &&
+            audioRef.current.currentTime < 0.1
           ) {
             void audioRef.current.play().catch((err) => {
               console.warn("Autoplay prevented on canplay:", err);
@@ -125,13 +138,21 @@ export default function AudioSync({
 
     const handleLoadedData = () => {
       // Try to play when data is loaded if autoPlay is enabled
-      if (autoPlay && isPlayingRef.current && audio.paused) {
+      // Only play if audio hasn't started yet (currentTime is 0 or very close to 0)
+      // This prevents restarting audio that's already in progress
+      if (
+        autoPlay &&
+        isPlayingRef.current &&
+        audio.paused &&
+        audio.currentTime < 0.1
+      ) {
         // Use a small delay to ensure audio is fully ready
         setTimeout(() => {
           if (
             audioRef.current &&
             audioRef.current.paused &&
-            isPlayingRef.current
+            isPlayingRef.current &&
+            audioRef.current.currentTime < 0.1
           ) {
             void audioRef.current.play().catch((err) => {
               console.warn("Autoplay prevented on loaded:", err);
@@ -206,18 +227,24 @@ export default function AudioSync({
 
   // Control play/pause state - pause/resume without resetting position
   useEffect(() => {
-    if (!audioRef.current || !isReady) return;
+    if (!audioRef.current) return;
     const audio = audioRef.current;
 
+    // Only control play/pause if audio is ready or already playing
+    // This prevents resetting audio that's already in progress
     if (isPlaying) {
       if (audio.paused) {
-        void audio.play().catch((err) => {
-          console.warn("Play prevented:", err);
-          setNeedsUserInteraction(true);
-        });
+        // Only play if audio is ready or has been loaded
+        if (audio.readyState >= 2 || isReady) {
+          void audio.play().catch((err) => {
+            console.warn("Play prevented:", err);
+            setNeedsUserInteraction(true);
+          });
+        }
       }
     } else {
       if (!audio.paused) {
+        // Pause without resetting currentTime
         audio.pause();
       }
     }
@@ -345,12 +372,7 @@ export default function AudioSync({
 
       {needsUserInteraction && (
         <div className="mt-4 flex justify-center">
-          <button
-            onClick={handlePlayClick}
-            className="rounded bg-blue-600 px-6 py-2 text-white shadow hover:bg-blue-700"
-          >
-            Putar Audio
-          </button>
+          <button onClick={handlePlayClick} className="hidden"></button>
         </div>
       )}
     </div>

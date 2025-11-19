@@ -35,6 +35,9 @@ const makeGroupPages = (group: PantunGroup): BookPage[] => {
 
 export default function Home() {
   const [currentUnlockedPage, setCurrentUnlockedPage] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const handlePageFinished = (pageIndex: number) => {
     setCurrentUnlockedPage((prev) =>
@@ -325,184 +328,88 @@ export default function Home() {
   //   ],
   // };
 
-  const pagesRaw: BookPage[] = [
-    ...makeGroupPages(warisan),
-    // ...makeGroupPages(duaKerat),
-    // ...makeGroupPages(empatKerat),
+  const pagesRaw: BookPage[] = makeGroupPages(warisan);
+
+  const coverBookPage: BookPage = {
+    id: "cover",
+    ariaLabel: warisan.cover.ariaLabel,
+    element: (
+      <CoverPage
+        videoSrc={warisan.cover.videoSrc}
+        bgmSrc={warisan.cover.bgmSrc}
+        isMuted={isMuted}
+        isPlaying={isPlaying}
+        onReady={() => {}}
+        onVideoEnd={() => {}}
+      />
+    ),
+  };
+  const endBookPage: BookPage = {
+    id: "end",
+    ariaLabel: "Halaman Akhir",
+    element: (
+      <EndCover
+        videoSrc="/assets/video/End Cover.mp4"
+        bgmSrc="/assets/audio/3 Classic - background soundtrack.wav"
+        isMuted={isMuted}
+        isPlaying={isPlaying}
+        onReady={() => {}}
+        onVideoEnd={() => {}}
+      />
+    ),
+  };
+
+  const blankPage: BookPage = {
+    id: "blank-end",
+    ariaLabel: "Halaman Kosong",
+    element: (
+      <div className="relative h-full w-full">
+        <img
+          src="/assets/images/bg1.png"
+          alt="Background"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
+    ),
+  };
+
+  const pagesWithoutEnd: BookPage[] = [
+    coverBookPage,
+    ...pagesRaw.map((p, index) => {
+      return {
+        ...p,
+        element: (
+          <PoemPage
+            {...(p.element as any)?.props}
+            id={p.id}
+            pageIndex={index}
+            isLocked={index > currentUnlockedPage}
+            onPageDone={() => handlePageFinished(index)}
+          />
+        ),
+      };
+    }),
   ];
 
-  const pages: BookPage[] = pagesRaw.map((p, index) => {
-    // Check if element is EndCover or CoverPage - don't wrap them in PoemPage
-    const typeName = (p.element as any)?.type?.name;
-    if (typeName === "EndCover" || typeName === "CoverPage") {
-      return p; // Return as is, don't wrap
-    }
+  const poemPagesCount = pagesRaw.length;
+  const endCoverWillBeOnRight = poemPagesCount % 2 === 1;
 
-    // Wrap PoemPage elements with additional props
-    return {
-      ...p,
-      element: (
-        <PoemPage
-          {...(p.element as any)?.props}
-          id={p.id}
-          pageIndex={index}
-          isLocked={index > currentUnlockedPage}
-          onPageDone={() => handlePageFinished(index)}
-        />
-      ),
-    };
-  });
-
-  const [showCover, setShowCover] = useState(true);
-  const [showEndCover, setShowEndCover] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
-
-  const handleCoverComplete = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setShowCover(false);
-      setIsTransitioning(false);
-    }, 500);
-  };
+  const pages: BookPage[] = [
+    ...pagesWithoutEnd,
+    ...(endCoverWillBeOnRight ? [blankPage] : []),
+    endBookPage,
+  ];
 
   const handleBookComplete = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setShowEndCover(true);
-      setIsTransitioning(false);
-    }, 500);
+    // modify later
   };
-
-  if (showCover) {
-    return (
-      <div
-        className={`h-dvh w-dvw overflow-hidden flex items-center justify-center ${
-          isTransitioning ? "cover-fade-out" : ""
-        }`}
-        style={{ background: "#FFD7B0", position: "relative" }}
-      >
-        <div className="w-full max-w-4xl mx-auto px-4">
-          <CoverPage
-            videoSrc={warisan.cover.videoSrc}
-            bgmSrc={warisan.cover.bgmSrc}
-            onVideoEnd={handleCoverComplete}
-            isMuted={isMuted}
-            isPlaying={isPlaying}
-          />
-        </div>
-
-        {/* Bottom controls */}
-        <div className="pointer-events-none absolute bottom-0 left-1/2 z-20 -translate-x-1/2 pb-4 pt-4 bg-[#1B1B1B] w-full flex justify-between items-center px-4">
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur">
-            {/* Play/Pause */}
-            <button
-              className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110"
-              onClick={() => setIsPlaying((p) => !p)}
-            >
-              <img
-                src={
-                  isPlaying
-                    ? "/assets/images/icon/Button_Pause.png"
-                    : "/assets/images/icon/Button_Play.png"
-                }
-              />
-            </button>
-
-            {/* Mute */}
-            <button
-              className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110"
-              onClick={() => setIsMuted((m) => !m)}
-            >
-              <img
-                src={
-                  isMuted
-                    ? "/assets/images/icon/Button_Mute.png"
-                    : "/assets/images/icon/Button_Sound On.png"
-                }
-              />
-            </button>
-          </div>
-
-          {/* Next */}
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur">
-            <button
-              aria-label="Next"
-              className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110"
-              onClick={handleCoverComplete}
-            >
-              <img src="/assets/images/icon/Button_Arrow Next.png" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (showEndCover) {
-    return (
-      <div
-        className={`h-dvh w-dvw overflow-hidden flex items-center justify-center ${
-          isTransitioning ? "cover-fade-in" : ""
-        }`}
-        style={{ background: "#FFD7B0", position: "relative" }}
-      >
-        <div className="w-full max-w-4xl mx-auto px-4">
-          <EndCover
-            videoSrc="/assets/video/End Cover.mp4"
-            bgmSrc="/assets/audio/3 Classic - background soundtrack.wav"
-            onReady={() => {}}
-            onVideoEnd={() => {}}
-            isMuted={isMuted}
-            isPlaying={isPlaying}
-          />
-        </div>
-
-        {/* Bottom controls */}
-        <div className="pointer-events-none absolute bottom-0 left-1/2 z-20 -translate-x-1/2 pb-4 pt-4 bg-[#1B1B1B] w-full flex justify-between items-center px-4">
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full px-4 py-2 shadow-lg backdrop-blur">
-            {/* Play/Pause */}
-            <button
-              className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110"
-              onClick={() => setIsPlaying((p) => !p)}
-            >
-              <img
-                src={
-                  isPlaying
-                    ? "/assets/images/icon/Button_Pause.png"
-                    : "/assets/images/icon/Button_Play.png"
-                }
-                alt={isPlaying ? "Pause" : "Play"}
-              />
-            </button>
-
-            {/* Mute */}
-            <button
-              className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110"
-              onClick={() => setIsMuted((m) => !m)}
-            >
-              <img
-                src={
-                  isMuted
-                    ? "/assets/images/icon/Button_Mute.png"
-                    : "/assets/images/icon/Button_Sound On.png"
-                }
-                alt={isMuted ? "Muted" : "Sound On"}
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
       className={`h-dvh w-dvw overflow-hidden ${
         isTransitioning ? "cover-fade-out" : "flipbook-fade-in"
       }`}
-      style={{ background: "#FFD7B0", position: "relative" }}
+      style={{ background: "#82603E", position: "relative" }}
     >
       <Book pages={pages} onBookComplete={handleBookComplete} />
     </div>

@@ -39,12 +39,6 @@ export default function PoemPage({
 
   // Reset active ID when isPlaying becomes false
   useEffect(() => {
-    if (!isPlaying) {
-      setActiveId(null);
-    }
-  }, [isPlaying]);
-
-  useEffect(() => {
     if (!showOnlyBackground && !activeId && segments && segments.length > 0) {
       setActiveId(segments[0].id);
     }
@@ -68,6 +62,15 @@ export default function PoemPage({
       audio.pause();
     }
   }, [isPlaying]);
+
+  // State activeId tetap terakhir kalau AudioSync null
+  const setActiveIdWithHold = (id: string | null) => {
+    if (id === null && segments.length > 0) {
+      setActiveId(segments[segments.length - 1].id);
+    } else {
+      setActiveId(id);
+    }
+  };
 
   return (
     <div className="relative flex h-full flex-col items-center justify-between overflow-hidden text-center">
@@ -101,7 +104,7 @@ export default function PoemPage({
             className="mt-2"
             onReady={() => {}}
             onDone={onDone}
-            onActiveChange={setActiveId}
+            onActiveChange={setActiveIdWithHold}
             isMuted={isMuted}
             isPlaying={isPlaying}
           />

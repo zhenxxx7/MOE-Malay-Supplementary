@@ -11,6 +11,7 @@ type PoemPageProps = {
   gifSrc?: string;
   backgroundImage?: string;
   gifBySegment?: Record<string, string>;
+  backgroundGif?: string;
   onDone?: () => void;
   isMuted?: boolean;
   isPlaying?: boolean;
@@ -25,6 +26,7 @@ export default function PoemPage({
   gifSrc,
   backgroundImage,
   gifBySegment,
+  backgroundGif,
   onDone,
   isMuted = false,
   isPlaying = true,
@@ -41,6 +43,12 @@ export default function PoemPage({
       setActiveId(null);
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    if (!showOnlyBackground && !activeId && segments && segments.length > 0) {
+      setActiveId(segments[0].id);
+    }
+  }, [showOnlyBackground, segments, activeId]);
 
   // Background music mute control
   useEffect(() => {
@@ -73,7 +81,18 @@ export default function PoemPage({
       )}
 
       {!showOnlyBackground && (
-        <div className="relative z-10 mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 p-4">
+        <div className="relative z-20 mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-start gap-6 p-4 pt-32">
+          {/* Background GIF, only when active */}
+          {backgroundGif && (
+            <div className="absolute bottom-0 left-1/2 z-10 w-full -translate-x-1/2 flex justify-center pointer-events-none">
+              <img
+                src={backgroundGif}
+                alt="Background GIF"
+                className="w-full max-w-none object-contain opacity-80"
+              />
+            </div>
+          )}
+
           <AudioSync
             key={`${id || voiceOverSrc}`}
             voiceOverSrc={voiceOverSrc}
@@ -88,13 +107,13 @@ export default function PoemPage({
           />
 
           {currentGif && (
-            <div className="mt-6 -mb-[200px]">
+            <div className="absolute bottom-0 left-1/2 z-30 w-full -translate-x-1/2 flex justify-center pointer-events-none">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 key={activeId || "default"}
                 src={currentGif}
                 alt="Illustration"
-                className="h-[50vh] w-auto -mt-[200px] transition-opacity duration-300"
+                className="w-full max-w-none object-contain"
               />
             </div>
           )}

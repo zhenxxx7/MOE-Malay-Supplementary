@@ -187,6 +187,30 @@ export default function Book({ pages, onBookComplete }: BookProps) {
     );
   }, [index, pages]);
 
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+  const onTouchEnd = () => {
+    if (!touchStartX.current || touchEndX.current === null) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (Math.abs(distance) < minSwipeDistance) return;
+    if (distance > 0) {
+      setDirection("next");
+      setIndex((i) => Math.min(pages.length - 1, i + 1));
+    } else {
+      setDirection("prev");
+      setIndex((i) => Math.max(0, i - 1));
+    }
+  };
+
   return (
     <div className="relative h-dvh w-dvw select-none">
       {/* Book viewport */}
@@ -199,170 +223,111 @@ export default function Book({ pages, onBookComplete }: BookProps) {
             : "justify-center"
         }`}
       >
-        {isDesktop ? (
-          <FlipBook
-            key={`${isDesktop}-${viewportHeight}-${viewportWidth}`}
-            ref={flipRef}
-            width={bookWidth}
-            height={bookHeight}
-            size="fixed"
-            maxShadowOpacity={0.35}
-            showCover={true}
-            mobileScrollSupport={true}
-            className="mx-auto"
-            style={{ background: "transparent" }}
-            onFlip={(e: any) => {
-              setIndex(e.data);
-              const idx = e.data;
-              const leftIndex = idx === 0 ? -1 : idx;
-              const rightIndex = idx === 0 ? 0 : idx + 1;
-              const leftPage = leftIndex >= 0 ? pages[leftIndex] : null;
-              const rightPage = pages[rightIndex];
-              const leftPageType = (leftPage?.element as any)?.type?.name;
-              const rightPageType = (rightPage?.element as any)?.type?.name;
-              console.log(
-                `onFlip: Index ${idx} | Left: ${leftPage?.id || "none"} (${
-                  leftPageType || "none"
-                }) | Right: ${rightPage?.id} (${rightPageType})`
-              );
-            }}
-          >
-            {pages.map((p, pageIndex) => {
-              const typeName = (p.element as any)?.type?.name;
-              const leftIndex = index === 0 ? -1 : index;
-              const rightIndex = index === 0 ? 0 : index + 1;
-              const isLeftPage = pageIndex === leftIndex;
-              const isRightPage = pageIndex === rightIndex;
-              const isVisible = isLeftPage || isRightPage;
+        <FlipBook
+          key={`${isDesktop}-${viewportHeight}-${viewportWidth}`}
+          ref={flipRef}
+          width={isDesktop ? bookWidth : Math.min(viewportWidth * 0.95, 400)}
+          height={isDesktop ? bookHeight : Math.min(viewportHeight * 0.85, 600)}
+          size="fixed"
+          maxShadowOpacity={0.35}
+          showCover={true}
+          singlePage={!isDesktop}
+          mobileScrollSupport={true}
+          className="mx-auto"
+          style={{ background: "transparent" }}
+          onFlip={(e: any) => {
+            setIndex(e.data);
+            const idx = e.data;
+            const leftIndex = idx === 0 ? -1 : idx;
+            const rightIndex = idx === 0 ? 0 : idx + 1;
+            const leftPage = leftIndex >= 0 ? pages[leftIndex] : null;
+            const rightPage = pages[rightIndex];
+          }}
+        >
+          {pages.map((p, pageIndex) => {
+            const typeName = (p.element as any)?.type?.name;
+            const leftIndex = index === 0 ? -1 : index;
+            const rightIndex = index === 0 ? 0 : index + 1;
+            const isLeftPage = pageIndex === leftIndex;
+            const isRightPage = pageIndex === rightIndex;
+            const isVisible = isDesktop
+              ? isLeftPage || isRightPage
+              : pageIndex === index;
 
-              // Debug log for page visibility
-              if (isVisible) {
-                console.log(
-                  `Page ${pageIndex} (${typeName}): index=${index}, leftIndex=${leftIndex}, rightIndex=${rightIndex}, isLeft=${isLeftPage}, isRight=${isRightPage}`
-                );
-              }
-
-              let shouldPlay = false;
-              if (!p.element) {
+            let shouldPlay = false;
+            if (!p.element) {
+              shouldPlay = false;
+            } else if (index === 0) {
+              shouldPlay =
+                typeName === "CoverPage" && pageIndex === 0 && isPlaying;
+            } else {
+              if (typeName === "CoverPage") {
                 shouldPlay = false;
-              } else if (index === 0) {
-                shouldPlay =
-                  typeName === "CoverPage" && pageIndex === 0 && isPlaying;
-              } else {
-                if (typeName === "CoverPage") {
-                  shouldPlay = false;
-                } else if (typeName === "PoemPage") {
-                  if (isLeftPage) {
-                    shouldPlay = isVisible && isPlaying && !showRightPage;
-                  } else if (isRightPage) {
-                    shouldPlay = isVisible && isPlaying && showRightPage;
-                  } else {
-                    shouldPlay = false;
-                  }
-                } else if (typeName === "EndCover") {
-                  shouldPlay = isVisible && isPlaying;
+              } else if (typeName === "PoemPage") {
+                if (isLeftPage) {
+                  shouldPlay = isVisible && isPlaying && !showRightPage;
+                } else if (isRightPage) {
+                  shouldPlay = isVisible && isPlaying && showRightPage;
                 } else {
-                  shouldPlay = isVisible && isPlaying;
+                  shouldPlay = false;
                 }
+              } else if (typeName === "EndCover") {
+                shouldPlay = isVisible && isPlaying;
+              } else {
+                shouldPlay = isVisible && isPlaying;
               }
+            }
 
-              const leftPageType =
-                leftIndex >= 0 && pages[leftIndex]?.element
-                  ? (pages[leftIndex].element as any)?.type?.name
-                  : null;
-              const isLeftPageCoverPage = leftPageType === "CoverPage";
+            const leftPageType =
+              leftIndex >= 0 && pages[leftIndex]?.element
+                ? (pages[leftIndex].element as any)?.type?.name
+                : null;
+            const isLeftPageCoverPage = leftPageType === "CoverPage";
 
-              const node = p.element ? (
-                typeName === "PoemPage" ? (
-                  cloneElement(p.element as any, {
-                    onDone: isLeftPage
+            const node = p.element ? (
+              typeName === "PoemPage" ? (
+                cloneElement(p.element as any, {
+                  onDone: isLeftPage
+                    ? handleLeftPageDone
+                    : () => setAllowNext(true),
+                  isMuted,
+                  isPlaying: shouldPlay,
+                  showOnlyBackground:
+                    isRightPage && !leftPageDone && !isLeftPageCoverPage,
+                })
+              ) : typeName === "CoverPage" ? (
+                cloneElement(p.element as any, {
+                  onReady:
+                    index === 0 || (index === 1 && isLeftPage)
                       ? handleLeftPageDone
-                      : () => setAllowNext(true),
-                    isMuted,
-                    isPlaying: shouldPlay,
-                    showOnlyBackground:
-                      isRightPage && !leftPageDone && !isLeftPageCoverPage,
-                  })
-                ) : typeName === "CoverPage" ? (
-                  cloneElement(p.element as any, {
-                    onReady:
-                      index === 0 || (index === 1 && isLeftPage)
-                        ? handleLeftPageDone
-                        : undefined,
-                    isMuted,
-                    isPlaying: shouldPlay,
-                  })
-                ) : typeName === "EndCover" ? (
-                  cloneElement(p.element as any, {
-                    onReady: isLeftPage ? handleLeftPageDone : undefined,
-                    isMuted,
-                    isPlaying: shouldPlay,
-                  })
-                ) : (
-                  p.element
-                )
+                      : undefined,
+                  isMuted,
+                  isPlaying: shouldPlay,
+                })
+              ) : typeName === "EndCover" ? (
+                cloneElement(p.element as any, {
+                  onReady: isLeftPage ? handleLeftPageDone : undefined,
+                  isMuted,
+                  isPlaying: shouldPlay,
+                })
               ) : (
-                // Blank page - render empty page with paper background
-                <div className="h-full w-full bg-[#f5f5dc]"></div>
-              );
+                p.element
+              )
+            ) : (
+              <div className="h-full w-full bg-[#f5f5dc]"></div>
+            );
 
-              return (
-                <article
-                  key={`${p.id}-${pageIndex}`}
-                  aria-label={p.ariaLabel}
-                  className="h-full w-full p-0"
-                >
-                  {node}
-                </article>
-              );
-            })}
-          </FlipBook>
-        ) : (
-          <div
-            className="flex h-full w-full items-stretch"
-            data-anim={direction ?? undefined}
-          >
-            {/* On mobile display ONLY the current page (single page view) */}
-            {visible.slice(0, 1).map((p, visibleIndex) => {
-              const typeName = (p.element as any)?.type?.name;
-              const isLeftPage = visibleIndex === 0;
-              const shouldPlay = isPlaying && !leftPageDone;
-
-              const node =
-                typeName === "PoemPage"
-                  ? cloneElement(p.element as any, {
-                      onDone: isLeftPage
-                        ? handleLeftPageDone
-                        : () => setAllowNext(true),
-                      isMuted,
-                      isPlaying: shouldPlay,
-                      showOnlyBackground: false,
-                    })
-                  : typeName === "CoverPage"
-                  ? cloneElement(p.element as any, {
-                      onReady: handleLeftPageDone,
-                      isMuted,
-                      isPlaying: shouldPlay,
-                    })
-                  : typeName === "EndCover"
-                  ? cloneElement(p.element as any, {
-                      onReady: isLeftPage ? handleLeftPageDone : undefined,
-                      isMuted,
-                      isPlaying: shouldPlay,
-                    })
-                  : p.element;
-              return (
-                <article
-                  key={`${p.id}-${visibleIndex}`}
-                  aria-label={p.ariaLabel}
-                  className="h-full w-full p-0"
-                >
-                  {node}
-                </article>
-              );
-            })}
-          </div>
-        )}
+            return (
+              <article
+                key={`${p.id}-${pageIndex}`}
+                aria-label={p.ariaLabel}
+                className="h-full w-full p-0"
+              >
+                {node}
+              </article>
+            );
+          })}
+        </FlipBook>
       </div>
 
       {/* Navigation controls */}
@@ -404,8 +369,7 @@ export default function Book({ pages, onBookComplete }: BookProps) {
             className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => {
               setDirection("prev");
-              if (isDesktop) flipRef.current?.pageFlip()?.flipPrev?.();
-              else setIndex((i) => Math.max(0, i - 1));
+              flipRef.current?.pageFlip()?.flipPrev?.();
             }}
             disabled={!canPrev}
           >
@@ -420,8 +384,7 @@ export default function Book({ pages, onBookComplete }: BookProps) {
             className="flex h-10 w-10 items-center justify-center transition-all hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => {
               setDirection("next");
-              if (isDesktop) flipRef.current?.pageFlip()?.flipNext?.();
-              else setIndex((i) => Math.min(pages.length - 1, i + 1));
+              flipRef.current?.pageFlip()?.flipNext?.();
             }}
             disabled={!canNext || !allowNext}
           >

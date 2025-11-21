@@ -6,6 +6,18 @@ import CoverPage from "@/components/CoverPage";
 import PoemPage from "@/components/PoemPage";
 import EndCover from "@/components/EndCover";
 
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const onChange = () => setMatches(m.matches);
+    onChange();
+    m.addEventListener("change", onChange);
+    return () => m.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
+}
+
 type Segment = { id: string; text: string; start: number; end: number };
 
 type PantunPageDef = {
@@ -17,6 +29,7 @@ type PantunPageDef = {
   gifBySegment?: Record<string, string>;
   backgroundMusicSrc?: string;
   segments: Segment[];
+  backgroundGif?: string;
 };
 
 type PantunGroup = {
@@ -116,13 +129,14 @@ export default function Home() {
         ariaLabel: "Pantun Warisan - halaman 4",
         voiceOverSrc: "/assets/audio/satu dua.mp3",
         backgroundImage: "/assets/images/bg1.png",
-        gifSrc: "/assets/gifs/final-kid.gif",
+        gifSrc: "/assets/gifs/final-kid-crop.gif",
         gifBySegment: {
           a: "/assets/gifs/1 2.gif",
           b: "/assets/gifs/3 4.gif",
-          c: "/assets/gifs/final-kid.gif",
-          d: "/assets/gifs/final-kid.gif",
+          c: "/assets/gifs/final-kid-crop.gif",
+          d: "/assets/gifs/final-kid-crop.gif",
         },
+        backgroundGif: "/assets/gifs/bush.gif",
         segments: [
           { id: "a", text: "Satu dua", start: 0.0, end: 1.3 },
           { id: "b", text: "tiga empat,", start: 1.3, end: 2.6 },
@@ -393,10 +407,11 @@ export default function Home() {
 
   const poemPagesCount = pagesRaw.length;
   const endCoverWillBeOnRight = poemPagesCount % 2 === 1;
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const pages: BookPage[] = [
     ...pagesWithoutEnd,
-    ...(endCoverWillBeOnRight ? [blankPage] : []),
+    ...(isDesktop && endCoverWillBeOnRight ? [blankPage] : []),
     endBookPage,
   ];
 
@@ -411,6 +426,13 @@ export default function Home() {
       }`}
       style={{ background: "#82603E", position: "relative" }}
     >
+      {/* Persistent background BGM */}
+      <audio
+        src="/assets/audio/3 Classic - background soundtrack.wav"
+        autoPlay
+        loop
+        className="hidden"
+      />
       <Book pages={pages} onBookComplete={handleBookComplete} />
     </div>
   );

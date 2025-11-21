@@ -68,7 +68,7 @@ export default function EndCover({
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   return (
-    <div className="relative grid min-h-[850px] place-items-center overflow-hidden rounded-xl">
+    <div className="relative grid min-h-[850px] max-sm:min-h-[600px] place-items-center overflow-hidden rounded-xl">
       <video
         ref={videoRef}
         src={videoSrc}

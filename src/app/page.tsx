@@ -63,7 +63,6 @@ export default function Home() {
     cover: {
       ariaLabel: "Cover Pantun Warisan",
       videoSrc: "/assets/video/Main Cover.mp4",
-      bgmSrc: "/assets/audio/3 Classic - background soundtrack.wav",
     },
     pages: [
       {
@@ -364,7 +363,6 @@ export default function Home() {
     element: (
       <EndCover
         videoSrc="/assets/video/End Cover.mp4"
-        bgmSrc="/assets/audio/3 Classic - background soundtrack.wav"
         isMuted={isMuted}
         isPlaying={isPlaying}
         onReady={() => {}}

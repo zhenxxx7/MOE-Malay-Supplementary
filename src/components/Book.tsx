@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useRef, useState, cloneElement } from "react";
 import dynamic from "next/dynamic";
 
+export type BookPageType = "cover" | "poem" | "end" | "blank" | "other";
+
 export type BookPage = {
   id: string;
   element: React.ReactNode;
   ariaLabel: string;
+  pageType?: BookPageType | string;
 };
 
 type BookProps = {
@@ -66,22 +69,14 @@ export default function Book({ pages, onBookComplete }: BookProps) {
   useEffect(() => {
     if (!isDesktop) {
       const currentPage = pages[index];
-      const isEndCover =
-        currentPage && (currentPage.element as any)?.type?.name === "EndCover";
-      setIsEndCoverPage(isEndCover);
+      setIsEndCoverPage(getPageType(currentPage) === "end");
     } else {
       const leftIndex = index === 0 ? -1 : index;
       const rightIndex = index === 0 ? 0 : index + 1;
       const leftPage = leftIndex >= 0 ? pages[leftIndex] : null;
       const rightPage = pages[rightIndex];
-      const leftPageType = leftPage
-        ? (leftPage.element as any)?.type?.name
-        : null;
-      const rightPageType = rightPage
-        ? (rightPage.element as any)?.type?.name
-        : null;
       const isEndCover =
-        leftPageType === "EndCover" || rightPageType === "EndCover";
+        getPageType(leftPage) === "end" || getPageType(rightPage) === "end";
       setIsEndCoverPage(isEndCover);
     }
   }, [index, pages, isDesktop]);
@@ -95,8 +90,8 @@ export default function Book({ pages, onBookComplete }: BookProps) {
       const leftIndex = index;
       const rightIndex = index + 1;
       if (pages[leftIndex]) {
-        const leftPageType = (pages[leftIndex].element as any)?.type?.name;
-        if (leftPageType === "CoverPage" || leftPageType === "EndCover") {
+        const leftPageType = getPageType(pages[leftIndex]);
+        if (leftPageType === "cover" || leftPageType === "end") {
           setLeftPageDone(true);
           setShowRightPage(true);
           setAllowNext(true);
@@ -178,12 +173,12 @@ export default function Book({ pages, onBookComplete }: BookProps) {
     const rightIndex = index === 0 ? 0 : index + 1;
     const leftPage = leftIndex >= 0 ? pages[leftIndex] : null;
     const rightPage = pages[rightIndex];
-    const leftPageType = (leftPage?.element as any)?.type?.name;
-    const rightPageType = (rightPage?.element as any)?.type?.name;
+    const leftPageType = leftPage ? getPageType(leftPage) : null;
+    const rightPageType = rightPage ? getPageType(rightPage) : null;
     console.log(
       `Book: Index ${index} | Left: ${leftPage?.id || "none"} (${
         leftPageType || "none"
-      }) | Right: ${rightPage?.id} (${rightPageType})`
+      }) | Right: ${rightPage?.id || "none"} (${rightPageType || "none"})`
     );
   }, [index, pages]);
 
@@ -245,7 +240,7 @@ export default function Book({ pages, onBookComplete }: BookProps) {
           }}
         >
           {pages.map((p, pageIndex) => {
-            const typeName = (p.element as any)?.type?.name;
+            const pageType = getPageType(p);
             const leftIndex = index === 0 ? -1 : index;
             const rightIndex = index === 0 ? 0 : index + 1;
             const isLeftPage = pageIndex === leftIndex;
@@ -258,12 +253,11 @@ export default function Book({ pages, onBookComplete }: BookProps) {
             if (!p.element) {
               shouldPlay = false;
             } else if (index === 0) {
-              shouldPlay =
-                typeName === "CoverPage" && pageIndex === 0 && isPlaying;
+              shouldPlay = pageType === "cover" && pageIndex === 0 && isPlaying;
             } else {
-              if (typeName === "CoverPage") {
+              if (pageType === "cover") {
                 shouldPlay = false;
-              } else if (typeName === "PoemPage") {
+              } else if (pageType === "poem") {
                 if (isLeftPage) {
                   shouldPlay = isVisible && isPlaying && !showRightPage;
                 } else if (isRightPage) {
@@ -271,21 +265,19 @@ export default function Book({ pages, onBookComplete }: BookProps) {
                 } else {
                   shouldPlay = false;
                 }
-              } else if (typeName === "EndCover") {
-                shouldPlay = isVisible && isPlaying;
               } else {
                 shouldPlay = isVisible && isPlaying;
               }
             }
 
             const leftPageType =
-              leftIndex >= 0 && pages[leftIndex]?.element
-                ? (pages[leftIndex].element as any)?.type?.name
+              leftIndex >= 0 && pages[leftIndex]
+                ? getPageType(pages[leftIndex])
                 : null;
-            const isLeftPageCoverPage = leftPageType === "CoverPage";
+            const isLeftPageCoverPage = leftPageType === "cover";
 
             const node = p.element ? (
-              typeName === "PoemPage" ? (
+              pageType === "poem" ? (
                 cloneElement(p.element as any, {
                   onDone: isLeftPage
                     ? handleLeftPageDone
@@ -295,7 +287,7 @@ export default function Book({ pages, onBookComplete }: BookProps) {
                   showOnlyBackground:
                     isRightPage && !leftPageDone && !isLeftPageCoverPage,
                 })
-              ) : typeName === "CoverPage" ? (
+              ) : pageType === "cover" ? (
                 cloneElement(p.element as any, {
                   onReady:
                     index === 0 || (index === 1 && isLeftPage)
@@ -304,7 +296,7 @@ export default function Book({ pages, onBookComplete }: BookProps) {
                   isMuted,
                   isPlaying: shouldPlay,
                 })
-              ) : typeName === "EndCover" ? (
+              ) : pageType === "end" ? (
                 cloneElement(p.element as any, {
                   onReady: isLeftPage ? handleLeftPageDone : undefined,
                   isMuted,
@@ -397,6 +389,29 @@ export default function Book({ pages, onBookComplete }: BookProps) {
       </div>
     </div>
   );
+}
+
+function getPageType(page?: BookPage | null): BookPageType {
+  const fromProp = normalizePageTypeString(
+    typeof page?.pageType === "string" ? page?.pageType : undefined
+  );
+  if (fromProp) return fromProp;
+
+  const elementType =
+    (page?.element as any)?.type?.displayName ||
+    (page?.element as any)?.type?.name;
+  const fromElement = normalizePageTypeString(elementType);
+  return fromElement ?? "other";
+}
+
+function normalizePageTypeString(value?: string | null): BookPageType | null {
+  if (!value) return null;
+  const sanitized = value.replace(/[\s_-]/g, "").toLowerCase();
+  if (sanitized.includes("endcover") || sanitized === "end") return "end";
+  if (sanitized.includes("cover")) return "cover";
+  if (sanitized.includes("poem")) return "poem";
+  if (sanitized.includes("blank")) return "blank";
+  return null;
 }
 
 // Custom hook

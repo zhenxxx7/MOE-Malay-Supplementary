@@ -72,7 +72,7 @@ export default function CoverPage({
       <video
         ref={videoRef}
         src={videoSrc}
-        className="absolute inset-0 h-full w-full object-contain"
+        className="absolute inset-0 h-full w-full md:h-auto object-contain"
         autoPlay
         muted
         playsInline

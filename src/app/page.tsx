@@ -42,6 +42,7 @@ const makeGroupPages = (group: PantunGroup): BookPage[] => {
   return group.pages.map<BookPage>((p) => ({
     id: p.id,
     ariaLabel: p.ariaLabel,
+    pageType: "poem",
     element: <PoemPage {...p} id={p.id} />,
   }));
 };
@@ -346,6 +347,7 @@ export default function Home() {
   const coverBookPage: BookPage = {
     id: "cover",
     ariaLabel: warisan.cover.ariaLabel,
+    pageType: "cover",
     element: (
       <CoverPage
         videoSrc={warisan.cover.videoSrc}
@@ -360,6 +362,7 @@ export default function Home() {
   const endBookPage: BookPage = {
     id: "end",
     ariaLabel: "Halaman Akhir",
+    pageType: "end",
     element: (
       <EndCover
         videoSrc="/assets/video/End Cover.mp4"
@@ -374,6 +377,7 @@ export default function Home() {
   const blankPage: BookPage = {
     id: "blank-end",
     ariaLabel: "Halaman Kosong",
+    pageType: "blank",
     element: (
       <div className="relative h-full w-full">
         <img
